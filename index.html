@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>平面射击游戏</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>平面射击游戏</h1>
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+    <br>
+    <button id="startButton">开始游戏</button>
+    <button id="restartButton" disabled>重新开始游戏</button>
+    <br><br>
+    敌人生成速率：<input type="range" id="enemyRate" min="1" max="10" step="1" value="5">
+    <script>
+        window.addEventListener('load', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            let keyState = {};
+
+            // 玩家
+            const player = {
+                x: 300,
+                y: 400,
+                width: 50,
+                height: 50,
+                speed: 6,
+                color: '#00FF00',
+                health: 100,
+                level: 1,
+                score: 0
+            };
+
+            // 子弹
+            const bullets = [];
+
+            // 敌人
+            const enemies = [];
+
+            // 道具
+            const items = [];
+
+            // 游戏状态
+            let gameRunning = false;
+
+            // 开始游戏按钮
+            const startButton = document.getElementById('startButton');
+            startButton.addEventListener('click', () => {
+                startGame();
+                startButton.disabled = true;
+                document.getElementById('enemyRate').disabled = true;
+            });
+
+            // 重新开始游戏按钮
+            const restartButton = document.getElementById('restartButton');
+            restartButton.addEventListener('click', () => {
+                restartGame();
+                restartButton.disabled = true;
+            });
+
+            // 敌人生成速率滚动条
+            const enemyRateSlider = document.getElementById('enemyRate');
+
+            // 移动玩家
+            function movePlayer(direction) {
+                if (direction === 'left') {
+                    player.x -= player.speed;
+                } else if (direction === 'right') {
+                    player.x += player.speed;
+                } else if (direction === 'up') {
+                    player.y -= player.speed;
+                } else if (direction === 'down') {
+                    player.y += player.speed;
+                }
+
+                // 确保玩家不会移出屏幕
+                if (player.x < 0) {
+                    player.x = 0;
+                } else if (player.x > canvas.width - player.width) {
+                    player.x = canvas.width - player.width;
+                }
+                if (player.y < 0) {
+                    player.y = 0;
+                } else if (player.y > canvas.height - player.height) {
+                    player.y = canvas.height - player.height;
+                }
+            }
+
+            // 开始游戏
+            function startGame() {
+                gameRunning = true;
+
+                // 初始化玩家
+                player.health = 100;
+                player.level = 1;
+                player.score = 0;
+
+                // 添加键盘事件监听器
+
+
+                // 监听键盘事件
+                window.addEventListener('keydown', (e) => {
+                    if (!gameRunning) {
+                        return;
+                    }
+                    keyState[e.key] = true; // 将当前按键添加到 keyState 中
+                    if (e.code === 'Space') {
+                        keyState['space'] = true;
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    if (!gameRunning) {
+                        return;
+                    }
+                    keyState[e.key] = false; // 将当前按键从 keyState 中移除
+                    if (e.code === 'Space') {
+                        keyState['space'] = false;
+                    }
+                });
+
+
+
+                // 开始游戏循环
+                gameLoop();
+            }
+
+            // 重新开始游戏
+            function restartGame() {
+                // 清空敌人、子弹和道具数组
+                enemies.splice(0, enemies.length);
+                bullets.splice(0, bullets.length);
+                items.splice(0, items.length);
+
+                // 初始化玩家
+                player.x = 300;
+                player.y = 400;
+                player.health = 100;
+                player.level = 1;
+                player.score = 0;
+
+                // 重置滚动条和按钮
+                startButton.disabled = false;
+                enemyRateSlider.disabled = false;
+                enemyRateSlider.value = 5;
+                gameRunning = false;
+            }
+
+            // 更新游戏状态
+            function update() {
+                // 敌人生成速率
+                const enemyRate = enemyRateSlider.value;
+                if (Math.random() < enemyRate / 200) {
+                    const enemyType = Math.floor(Math.random() * 3); // 0-2 的随机数，决定敌人类型
+                    let enemyWidth, enemyHeight, enemySpeed, enemyColor, enemyHealth;
+                    switch (enemyType) {
+                        case 0:
+                            enemyWidth = 30;
+                            enemyHeight = 30;
+                            enemySpeed = 3;
+                            enemyColor = '#FFA500';
+                            enemyHealth = 10;
+                            break;
+                        case 1:
+                            enemyWidth = 40;
+                            enemyHeight = 40;
+                            enemySpeed = 2;
+                            enemyColor = '#800080';
+                            enemyHealth = 20;
+                            break;
+                        case 2:
+                            enemyWidth = 50;
+                            enemyHeight = 50;
+                            enemySpeed = 1;
+                            enemyColor = '#00FFFF';
+                            enemyHealth = 30;
+                            break;
+                    }
+                    const enemyX = Math.floor(Math.random() * (canvas.width - enemyWidth));
+                    enemies.push({
+                        x: enemyX,
+                        y: -enemyHeight,
+                        width: enemyWidth,
+                        height: enemyHeight,
+                        speed: enemySpeed,
+                        color: enemyColor,
+                        health: enemyHealth,
+                        type: enemyType
+                    });
+                }
+
+                if (keyState['a']) {
+                    movePlayer('left');
+                }
+                if (keyState['d']) {
+                    movePlayer('right');
+                }
+                if (keyState['w']) {
+                    movePlayer('up');
+                }
+                if (keyState['s']) {
+                    movePlayer('down');
+                }
+                if (keyState['space']) { // 发射子弹
+                    bullets.push({
+                        x: player.x + player.width / 2 - 5,
+                        y: player.y - 10,
+                        width: 10,
+                        height: 10,
+                        speed: 10,
+                        color: '#FF0000'
+                    });
+                }
+
+
+                // 移动敌人
+                for (let i = 0; i < enemies.length; i++) {
+                    const e = enemies[i];
+                    e.y += e.speed;
+
+                    // 删除已经超出屏幕的敌人
+                    if (e.y > canvas.height) {
+                        enemies.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                for (let j = 0; j < enemies.length; j++) {
+                    if (detectCollision(player, enemies[j])) {
+                        player.health -= 5;
+                        enemies.splice(j, 1);
+                        j--;
+                    }
+
+                }
+
+
+
+
+                // 移动子弹
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    b.y -= b.speed;
+
+                    // 删除已经离开屏幕的子弹
+                    if (b.y < 0) {
+                        bullets.splice(i, 1);
+                        i--;
+                        continue;
+                    }
+
+                    // 检测子弹和敌人是否碰撞
+                    for (let j = 0; j < enemies.length; j++) {
+                        const e = enemies[j];
+                        if (detectCollision(b, e)) {
+                            // 减少敌人血量
+                            e.health--;
+
+                            // 如果敌人死亡，删除敌人并增加玩家分数
+                            if (e.health <= 0) {
+                                enemies.splice(j, 1);
+                                j--;
+                                player.score += 10 * (e.type + 1); // 不同类型的敌人得分不同
+
+                                // 随机生成道具
+                                const itemRate = Math.random();
+                                if (itemRate < 0.2) { // 20% 的概率生成血包
+                                    items.push({
+                                        x: e.x,
+                                        y: e.y,
+                                        width: 30,
+                                        height: 30,
+                                        type: 'hp'
+                                    });
+                                } else if (itemRate < 0.3) { // 10% 的概率生成升级道具
+                                    items.push({
+                                        x: e.x,
+                                        y: e.y,
+                                        width: 30,
+                                        height: 30,
+                                        type: 'level'
+                                    });
+                                }
+                            }
+
+                            // 删除子弹
+                            bullets.splice(i, 1);
+                            i--;
+                            break;
+                        }
+                    }
+                }
+
+                // 移动道具
+                for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    it.y += 3;
+
+                    // 删除已经离开屏幕的道具
+                    if (it.y > canvas.height) {
+                        items.splice(i, 1);
+                        i--;
+                        continue;
+                    }
+
+                    // 检测道具和玩家是否碰撞
+                    if (detectCollision(it, player)) {
+                        // 应用道具效果
+                        switch (it.type) {
+                            case 'hp':
+                                player.health += 20;
+                                if (player.health > 100) {
+                                    player.health = 100;
+                                }
+                                break;
+                            case 'level':
+                                player.level++;
+                                break;
+                        }
+                        // 删除道具
+                        items.splice(i, 1);
+                        i--;
+                        continue;
+                    }
+                }
+
+                // 碰撞检测函数
+                function detectCollision(obj1, obj2) {
+                    return obj1.x < obj2.x + obj2.width &&
+                        obj1.x + obj1.width > obj2.x &&
+                        obj1.y < obj2.y + obj2.height &&
+                        obj1.y + obj1.height > obj2.y;
+                }
+
+                // 升级判断
+                if (player.score >= player.level * 100) {
+                    player.level++;
+                    player.health = 100;
+                }
+
+                // 玩家扣血
+                if (player.health > 0) { // 添加条件判断，只有玩家被敌人击中时才扣血
+                    // player.health--;
+                    if (player.health <= 0) {
+                        gameRunning = false;
+                        restartButton.disabled = false;
+                    }
+                }
+
+
+
+            }
+
+            // 绘制游戏场景
+            function draw() {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 绘制玩家
+                ctx.fillStyle = player.color;
+                ctx.fillRect(player.x, player.y, player.width, player.height);
+
+                // 绘制子弹
+                for (let i = 0; i < bullets.length; i++) {
+                    const b = bullets[i];
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x, b.y, b.width, b.height);
+                }
+
+                // 绘制敌人
+                for (let i = 0; i < enemies.length; i++) {
+                    const e = enemies[i];
+                    ctx.fillStyle = e.color;
+                    ctx.fillRect(e.x, e.y, e.width, e.height);
+                }
+
+                // 绘制道具
+                for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    if (it.type === 'hp') {
+                        ctx.fillStyle = '#FF0000';
+                    } else if (it.type === 'level') {
+                        ctx.fillStyle = '#FFFF00';
+                    }
+                    ctx.fillRect(it.x, it.y, it.width, it.height);
+                }
+
+                // 绘制分数和等级信息
+                ctx.fillStyle = '#000000';
+                ctx.font = '20px Arial';
+                ctx.fillText(`分数：${player.score}`, 10, 30);
+                ctx.fillText(`等级：${player.level}`, 10, 60);
+
+                // 绘制血量条
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(canvas.width - 110, 10, player.health, 20);
+                ctx.strokeStyle = '#000000';
+                ctx.strokeRect(canvas.width - 110, 10, 100, 20);
+            }
+
+            // 游戏循环
+            function gameLoop() {
+                if (gameRunning) {
+                    update();
+                    draw();
+                }
+                requestAnimationFrame(gameLoop); // 每帧调用 gameLoop 函数
+            }
+        });
+    </script>
+</body>
+
+</html>
